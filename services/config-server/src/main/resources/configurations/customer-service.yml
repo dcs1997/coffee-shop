@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: customer-service
+  data:
+    mongodb:
+      username: dhiraj
+      password: dhiraj
+      host: localhost
+      port: 27017
+      database: customer
+      authentication-database: admin
+server:
+  port: 8090
