@@ -6,6 +6,8 @@ import com.coffee.ecommerce.kafka.OrderConfirmation;
 import com.coffee.ecommerce.kafka.OrderProducer;
 import com.coffee.ecommerce.orderline.OrderLineRequest;
 import com.coffee.ecommerce.orderline.OrderLineService;
+import com.coffee.ecommerce.payment.PaymentClient;
+import com.coffee.ecommerce.payment.PaymentRequest;
 import com.coffee.ecommerce.product.ProductClient;
 import com.coffee.ecommerce.product.PurchaseRequest;
 import jakarta.persistence.EntityNotFoundException;
@@ -25,6 +27,8 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final OrderLineService orderLineService;
     private final OrderProducer orderProducer;
+    private final PaymentClient paymentClient;
+
 
     public Integer crreateOrder(OrderRequest orderRequest) {
         // check the customer --> openFeign
@@ -59,6 +63,14 @@ for(PurchaseRequest purchaseRequest : orderRequest.products()){
 
 
         //start payment process
+        var paymentRequest = new PaymentRequest(
+                orderRequest.amount(),
+                orderRequest.paymentMethod(),
+                order.getId(),
+                order.getReference(),
+                customer
+        );
+        paymentClient.requestOrderPayment(paymentRequest);
 
         //send order conformation -> notification message (kafka)
 orderProducer.sendOrderConfirmation(
