@@ -1,5 +1,6 @@
 package com.coffee.ecommerce.orderline;
 
+import com.coffee.ecommerce.order.Order;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,9 +16,17 @@ public class OrderLineService {
 
     public Integer saveOrderLine(OrderLineRequest orderLineRequest) {
 
-        var order = orderLineMapper.toOrderLine(orderLineRequest);
+        var order = Order.builder()
+                .id(orderLineRequest.orderId())  // No need to find the order, it's already passed
+                .build();
 
-        return orderLineRepository.save(order).getId();
+        var orderLine = OrderLine.builder()
+                .quantity(orderLineRequest.quantity())
+                .order(order)  // Set the existing order here
+                .productId(orderLineRequest.productId())
+                .build();
+
+        return orderLineRepository.save(orderLine).getId();
     }
 
     public List<OrderLineResponse> findByOrderId(Integer orderId) {

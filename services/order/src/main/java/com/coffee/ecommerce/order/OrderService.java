@@ -31,38 +31,23 @@ public class OrderService {
 
 
     public Integer createOrder(OrderRequest orderRequest) {
-        // check the customer --> openFeign
         var customer = this.customerClient.findCustomerById(orderRequest.customerId())
-                .orElseThrow(() -> new BusinessException("Cannot create order:: No Customer exist with the provided id"+orderRequest.customerId()));
+                .orElseThrow(() -> new BusinessException("Cannot create order:: No customer exists with the provided ID"));
 
+        var purchasedProducts = productClient.purchaseProducts(orderRequest.products());
 
-/*
-we can use same way for product using openFeign but just to implement something new we are using RestTemplate
-
-Something new to learn
-
- */
-
-        //purchase the product using product microservice
-var purchasedProducts= this.productClient.purchaseProducts(orderRequest.products());
-
-        //persist order object
         var order = this.orderRepository.save(orderMapper.toOrder(orderRequest));
 
-for(PurchaseRequest purchaseRequest : orderRequest.products()){
-    orderLineService.saveOrderLine(
-            new OrderLineRequest(
-                    null,
-                    order.getId(),
-                    purchaseRequest.productId(),
-                    purchaseRequest.quantity()
-            )
-    );
-
-}
-
-
-        //start payment process
+        for (PurchaseRequest purchaseRequest : orderRequest.products()) {
+            orderLineService.saveOrderLine(
+                    new OrderLineRequest(
+                            null,
+                            order.getId(),
+                            purchaseRequest.productId(),
+                            purchaseRequest.quantity()
+                    )
+            );
+        }
         var paymentRequest = new PaymentRequest(
                 orderRequest.amount(),
                 orderRequest.paymentMethod(),
@@ -72,16 +57,15 @@ for(PurchaseRequest purchaseRequest : orderRequest.products()){
         );
         paymentClient.requestOrderPayment(paymentRequest);
 
-        //send order conformation -> notification message (kafka)
-orderProducer.sendOrderConfirmation(
-        new OrderConfirmation(
-                orderRequest.reference(),
-                orderRequest.amount(),
-                orderRequest.paymentMethod(),
-                customer,
-                purchasedProducts
-        )
-);
+        orderProducer.sendOrderConfirmation(
+                new OrderConfirmation(
+                        orderRequest.reference(),
+                        orderRequest.amount(),
+                        orderRequest.paymentMethod(),
+                        customer,
+                        purchasedProducts
+                )
+        );
 
         return order.getId();
     }
